@@ -21,8 +21,8 @@ export const useMainStore = defineStore('main', () => {
   // 在创建 store 时初始化 API 客户端
   const initializeFromLocalStorage = () => {
     const config = {
-      deepseekApiKey: localStorage.getItem('deepseekApiKey'),
-      moonshotApiKey: localStorage.getItem('moonshotApiKey')
+      deepseekApiKey: localStorage.getItem('deepseek_api_key'),
+      moonshotApiKey: localStorage.getItem('moonshot_api_key')
     }
     if (config.deepseekApiKey || config.moonshotApiKey) {
       updateApiConfig(config)
@@ -53,9 +53,9 @@ export const useMainStore = defineStore('main', () => {
       hybrid: null
     }
 
+    // 调用 Deepseek Reasoner
+    loading.value.reasoner = true
     try {
-      // 1. DeepSeek Reasoner
-      loading.value.reasoner = true
       results.value.reasoner = await apiService.askDeepseekReasoner(questionText)
     } catch (err) {
       console.error('Error calling DeepSeek Reasoner:', err)
@@ -64,9 +64,9 @@ export const useMainStore = defineStore('main', () => {
       loading.value.reasoner = false
     }
 
+    // 调用 Moonshot
+    loading.value.chat = true
     try {
-      // 2. Moonshot
-      loading.value.chat = true
       results.value.chat = await apiService.askMoonshot(questionText)
     } catch (err) {
       console.error('Error calling Moonshot:', err)
@@ -75,9 +75,10 @@ export const useMainStore = defineStore('main', () => {
       loading.value.chat = false
     }
 
+    // 调用 Hybrid，传入思维链内容
+    loading.value.hybrid = true
     try {
-      // 3. Hybrid Reasoning with Moonshot
-      loading.value.hybrid = true
+      console.log('Reasoner result:', results.value.reasoner)
       results.value.hybrid = await apiService.askHybrid(
         questionText,
         results.value.reasoner?.reasoning_content

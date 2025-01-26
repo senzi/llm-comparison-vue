@@ -1,101 +1,128 @@
-import OpenAI from 'openai'
-import { config } from '../config'
+import axios from 'axios'
+
+export const moonshotAPI = axios.create({
+  baseURL: 'https://api.moonshot.cn/v1',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+export const deepseekAPI = axios.create({
+  baseURL: 'https://api.deepseek.com/v1',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器添加token
+moonshotAPI.interceptors.request.use(config => {
+  const apiKey = localStorage.getItem('moonshotApiKey')
+  if (apiKey) {
+    config.headers['Authorization'] = `Bearer ${apiKey}`
+  }
+  return config
+})
+
+deepseekAPI.interceptors.request.use(config => {
+  const apiKey = localStorage.getItem('deepseekApiKey')
+  if (apiKey) {
+    config.headers['Authorization'] = `Bearer ${apiKey}`
+  }
+  return config
+})
 
 export class APIService {
   constructor() {
-    this.deepseekClient = null
-    this.moonshotClient = null
+    // 从localStorage初始化
+    this.initClients({
+      deepseekApiKey: localStorage.getItem('deepseekApiKey'),
+      moonshotApiKey: localStorage.getItem('moonshotApiKey')
+    })
   }
 
   initClients(apiConfig) {
-    console.log('Initializing API clients with config:', apiConfig)
     if (apiConfig.deepseekApiKey) {
-      this.deepseekClient = new OpenAI({
-        baseURL: config.apis.deepseek.baseUrl,
-        apiKey: apiConfig.deepseekApiKey,
-        dangerouslyAllowBrowser: true
-      })
+      localStorage.setItem('deepseekApiKey', apiConfig.deepseekApiKey)
     }
-
     if (apiConfig.moonshotApiKey) {
-      console.log('Setting up Moonshot client')
-      this.moonshotClient = new OpenAI({
-        baseURL: config.apis.moonshot.baseUrl,
-        apiKey: apiConfig.moonshotApiKey,
-        dangerouslyAllowBrowser: true
-      })
+      localStorage.setItem('moonshotApiKey', apiConfig.moonshotApiKey)
     }
   }
 
   async askDeepseekReasoner(question) {
-    if (!this.deepseekClient) {
-      throw new Error('DeepSeek API 未配置')
+    if (!localStorage.getItem('deepseekApiKey')) {
+      throw new Error('Deepseek API 未配置')
     }
 
-    const completion = await this.deepseekClient.chat.completions.create({
-      model: config.apis.deepseek.defaultModel.reasoner,
+    const response = await deepseekAPI.post('/chat/completions', {
+      model: 'deepseek-reasoner',
       messages: [
-        { role: 'system', content: 'You are a helpful assistant.' },
-        { role: 'user', content: question }
-      ],
+        {
+          role: 'user',
+          content: question
+        }
+      ]
     })
 
-    return {
-      reasoning_content: completion.choices[0]?.message?.content || '',
-      content: completion.choices[0]?.message?.content || ''
+    const result = {
+      model: 'deepseek-reasoner',
+      reasoning_content: response.data.choices[0].message.reasoning_content || '',
+      content: response.data.choices[0].message.content || ''
     }
+    
+    return result
   }
 
   async askMoonshot(question) {
-    if (!this.moonshotClient) {
-      console.error('Moonshot client is null')
+    if (!localStorage.getItem('moonshotApiKey')) {
       throw new Error('Moonshot API 未配置')
     }
 
-    console.log('Calling Moonshot API')
-    const completion = await this.moonshotClient.chat.completions.create({
-      model: config.apis.moonshot.defaultModel,
+    const response = await moonshotAPI.post('/chat/completions', {
+      model: 'moonshot-v1-8k',
       messages: [
-        { 
-          role: "system", 
-          content: "你是 Kimi，由 Moonshot AI 提供的人工智能助手。"
-        },
         {
-          role: "user",
+          role: 'user',
           content: question
         }
-      ],
-      temperature: 0.3
+      ]
     })
 
-    return {
-      content: completion.choices[0]?.message?.content || ''
+    const result = {
+      model: 'moonshot-v1-8k',
+      content: response.data.choices[0]?.message?.content || ''
     }
+    
+    return result
   }
 
   async askHybrid(question, reasoningContent) {
-    if (!this.moonshotClient) {
+    if (!localStorage.getItem('moonshotApiKey')) {
       throw new Error('Moonshot API 未配置')
     }
 
-    const completion = await this.moonshotClient.chat.completions.create({
-      model: config.apis.moonshot.defaultModel,
+    const userContent = `问题：${question}\n\n另一个AI的推理过程：${reasoningContent || '无推理过程'}`
+    console.log('Hybrid user content:', userContent)
+
+    const response = await moonshotAPI.post('/chat/completions', {
+      model: 'moonshot-v1-auto',
       messages: [
-        { 
-          role: "system", 
-          content: "你是 Kimi，由 Moonshot AI 提供的人工智能助手。我会给你一个问题和另一个AI的推理过程，请你参考这个推理过程，用自己的方式回答问题。"
+        {
+          role: 'system',
+          content: '你是 Kimi，由 Moonshot AI 提供的人工智能助手。我会给你一个问题和另一个AI的推理过程，请你参考这个推理过程，用自己的方式回答问题。'
         },
         {
-          role: "user",
-          content: `问题：${question}\n\n另一个AI的推理过程：${reasoningContent || '无推理过程'}`
+          role: 'user',
+          content: userContent
         }
-      ],
-      temperature: 0.3
+      ]
     })
 
-    return {
-      model: config.apis.moonshot.defaultModel,
-      content: completion.choices[0]?.message?.content || ''
+    const result = {
+      model: 'moonshot-v1-auto',
+      content: response.data.choices[0]?.message?.content || ''
     }
+    
+    return result
   }
 }
