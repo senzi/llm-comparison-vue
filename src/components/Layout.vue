@@ -36,14 +36,15 @@
           <textarea
             v-model="questionText"
             rows="4"
-            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            class="block w-full rounded-lg border-2 border-gray-300 shadow-sm px-4 py-3 text-gray-700 placeholder-gray-400 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-colors duration-200"
             placeholder="请输入您要测试的问题..."
+            style="resize: vertical; min-height: 120px;"
           ></textarea>
           <div class="mt-4 flex justify-end">
             <button
               @click="submitQuestion"
               :disabled="!questionText.trim()"
-              class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               提交
             </button>
